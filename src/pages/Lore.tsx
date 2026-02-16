@@ -23,13 +23,7 @@ import bgVol6 from "@/assets/lore/bg-vol6-language-war.jpg";
 import bgAppendices from "@/assets/lore/bg-appendices.jpg";
 
 const volumeBackgrounds: Record<number, string> = {
-  1: bgVol1,
-  2: bgVol2,
-  3: bgVol3,
-  4: bgVol4,
-  5: bgVol5,
-  6: bgVol6,
-  0: bgAppendices,
+  1: bgVol1, 2: bgVol2, 3: bgVol3, 4: bgVol4, 5: bgVol5, 6: bgVol6, 0: bgAppendices,
 };
 
 const volumeLabels = [
@@ -42,52 +36,23 @@ const volumeLabels = [
   { num: 0, label: "Appendices", roman: "◆" },
 ];
 
-const volumeAccentColors: Record<number, string> = {
-  1: "hsl(var(--foreground) / 0.3)",
-  2: "hsl(var(--mythic-glow))",
-  3: "hsl(var(--earth-glow))",
-  4: "hsl(var(--fire-glow))",
-  5: "hsl(var(--shadow-glow))",
-  6: "hsl(var(--light-glow))",
-  0: "hsl(var(--foreground) / 0.3)",
-};
+/* ── Single accent: warm amber ── */
+const ACCENT = "hsl(30, 60%, 50%)";
+const ACCENT_DIM = "hsl(30, 40%, 30%)";
 
-const tribeColorMap: Record<string, string> = {
-  shadow: "hsl(var(--shadow-glow))",
-  light: "hsl(var(--light-glow))",
-  fire: "hsl(var(--fire-glow))",
-  earth: "hsl(var(--earth-glow))",
-  mythic: "hsl(var(--mythic-glow))",
-};
-
-const tribeGradientMap: Record<string, string> = {
-  shadow: "from-[hsl(270,40%,50%,0.15)] to-transparent",
-  light: "from-[hsl(45,50%,60%,0.12)] to-transparent",
-  fire: "from-[hsl(10,55%,50%,0.12)] to-transparent",
-  earth: "from-[hsl(140,35%,42%,0.12)] to-transparent",
-  mythic: "from-[hsl(0,55%,45%,0.12)] to-transparent",
-};
-
-// Inline portrait component — redesigned
+// Inline portrait — minimal, monochrome border
 const InlinePortrait = ({ portrait }: { portrait: CharacterPortrait }) => (
-  <span className="inline-flex items-center gap-1.5 mx-0.5 align-middle group/portrait">
+  <span className="inline-flex items-center gap-1 mx-0.5 align-middle">
     <span
-      className="inline-block w-7 h-7 rounded-full overflow-hidden border-2 flex-shrink-0 align-middle transition-all duration-300 group-hover/portrait:scale-110"
-      style={{
-        borderColor: tribeColorMap[portrait.tribe] || "hsl(var(--foreground) / 0.15)",
-        boxShadow: `0 0 10px ${tribeColorMap[portrait.tribe] || "transparent"}50`,
-      }}
+      className="inline-block w-6 h-6 rounded-full overflow-hidden flex-shrink-0 align-middle"
+      style={{ border: `1.5px solid ${ACCENT_DIM}` }}
     >
-      <img
-        src={portrait.image}
-        alt={portrait.name}
-        className="w-full h-full object-cover object-top"
-      />
+      <img src={portrait.image} alt={portrait.name} className="w-full h-full object-cover object-top" />
     </span>
   </span>
 );
 
-// Render paragraph text with character portraits injected inline
+// Render paragraph text with character portraits
 function renderParagraphWithPortraits(text: string): ReactNode {
   const matches: { name: string; portrait: CharacterPortrait; start: number; end: number }[] = [];
   const seen = new Set<string>();
@@ -122,12 +87,7 @@ function renderParagraphWithPortraits(text: string): ReactNode {
     parts.push(
       <Fragment key={match.start}>
         <InlinePortrait portrait={match.portrait} />
-        <strong
-          className="font-heading text-[0.95em]"
-          style={{ color: tribeColorMap[match.portrait.tribe] || "hsl(var(--foreground) / 0.7)" }}
-        >
-          {match.name}
-        </strong>
+        <strong className="font-heading text-[0.95em] text-foreground/70">{match.name}</strong>
       </Fragment>
     );
     lastIdx = match.end;
@@ -137,64 +97,55 @@ function renderParagraphWithPortraits(text: string): ReactNode {
   return <>{parts}</>;
 }
 
-// ─── Reading Progress Bar ───
+/* ── Reading Progress — single thin amber line ── */
 const ReadingProgress = () => {
   const { scrollYProgress } = useScroll();
   const width = useTransform(scrollYProgress, [0, 1], ["0%", "100%"]);
-
-  return <motion.div className="lore-progress-bar" style={{ width }} />;
+  return (
+    <motion.div
+      className="fixed top-16 left-0 h-[1px] z-[100]"
+      style={{ width, background: ACCENT }}
+    />
+  );
 };
 
-// ─── Chapter Divider ───
-const ChapterDivider = ({ color }: { color: string }) => (
-  <div className="lore-chapter-divider">
-    <span
-      className="w-2 h-2 rotate-45 flex-shrink-0"
-      style={{ background: color, opacity: 0.4 }}
-    />
-  </div>
-);
-
-// ─── Volume Selector Cards ───
-const VolumeSelectorCard = ({
-  vol,
-  isActive,
-  onClick,
-  accentColor,
+/* ── Volume Navigation — minimal horizontal list ── */
+const VolumeNav = ({
+  activeVolume,
+  setActiveVolume,
 }: {
-  vol: (typeof volumeLabels)[number];
-  isActive: boolean;
-  onClick: () => void;
-  accentColor: string;
+  activeVolume: number;
+  setActiveVolume: (v: number) => void;
 }) => (
-  <button
-    onClick={onClick}
-    className={`lore-volume-card flex flex-col items-center justify-center px-5 py-4 min-w-[130px] md:min-w-[150px] cursor-pointer ${
-      isActive ? "active" : ""
-    }`}
-  >
-    <span
-      className="font-display text-lg md:text-xl transition-colors duration-300"
-      style={{ color: isActive ? accentColor : "hsl(var(--foreground) / 0.2)" }}
-    >
-      {vol.roman}
-    </span>
-    <span
-      className={`font-body text-[9px] md:text-[10px] tracking-[0.15em] uppercase mt-1.5 transition-colors duration-300 ${
-        isActive ? "text-foreground/70" : "text-muted-foreground/60"
-      }`}
-    >
-      {vol.label}
-    </span>
-    {isActive && (
-      <motion.div
-        layoutId="volumeIndicator"
-        className="w-8 h-0.5 mt-2 rounded-full"
-        style={{ background: accentColor }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      />
-    )}
-  </button>
+  <div className="sticky top-16 z-40 border-b border-foreground/[0.04]" style={{ background: "hsl(0 0% 2% / 0.85)", backdropFilter: "blur(20px)" }}>
+    <div className="container mx-auto px-6">
+      <div className="flex items-center gap-0 overflow-x-auto scrollbar-hide py-0">
+        {volumeLabels.map((vol) => {
+          const isActive = activeVolume === vol.num;
+          return (
+            <button
+              key={vol.num}
+              onClick={() => setActiveVolume(vol.num)}
+              className="relative flex-shrink-0 px-5 py-4 transition-colors duration-300"
+              style={{ color: isActive ? ACCENT : "hsl(0 0% 35%)" }}
+            >
+              <span className="font-display text-[11px] tracking-[0.15em]">
+                {vol.roman}
+              </span>
+              {isActive && (
+                <motion.div
+                  layoutId="loreNavIndicator"
+                  className="absolute bottom-0 left-0 right-0 h-[1px]"
+                  style={{ background: ACCENT }}
+                  transition={{ type: "spring", stiffness: 400, damping: 35 }}
+                />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  </div>
 );
 
 const Lore = () => {
@@ -207,182 +158,148 @@ const Lore = () => {
   }, [activeVolume]);
 
   const currentBg = volumeBackgrounds[activeVolume] || bgAppendices;
-  const accentColor = volumeAccentColors[activeVolume] || "hsl(var(--foreground) / 0.3)";
 
-  // Scroll to top on volume change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [activeVolume]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen" style={{ background: "hsl(0 0% 2%)" }}>
       <Navbar />
       <ReadingProgress />
 
-      {/* Full-bleed background layer with parallax */}
+      {/* ── Fixed background — cinematic, dark ── */}
       <div className="fixed inset-0 z-0">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeVolume}
-            initial={{ opacity: 0, scale: 1.05 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.98 }}
-            transition={{ duration: 1.5, ease: "easeOut" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1.8, ease: "easeOut" }}
             className="absolute inset-0"
           >
-            <img
-              src={currentBg}
-              alt=""
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-background/80" />
-            <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/70 to-background" />
-            <div className="absolute inset-0 bg-gradient-to-r from-background/50 via-transparent to-background/50" />
-            {/* Accent color wash */}
-            <div
-              className="absolute inset-0 mix-blend-soft-light opacity-30"
-              style={{ background: `radial-gradient(ellipse at 50% 30%, ${accentColor}, transparent 70%)` }}
-            />
+            <img src={currentBg} alt="" className="w-full h-full object-cover" />
+            {/* Heavy darken — image is atmosphere, not the star */}
+            <div className="absolute inset-0" style={{ background: "hsl(0 0% 2% / 0.88)" }} />
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[hsl(0_0%_2%_/_0.6)] to-[hsl(0_0%_2%)]" />
           </motion.div>
         </AnimatePresence>
       </div>
 
-      {/* ─── Hero ─── */}
-      <section className="relative z-10 pt-32 pb-16 md:pt-48 md:pb-24">
-        <div className="container mx-auto px-6 text-center">
+      {/* ── Hero — massive, minimal ── */}
+      <section className="relative z-10 min-h-[85vh] flex flex-col items-center justify-center px-6">
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1.5, delay: 0.3 }}
+          className="font-body tracking-[0.5em] text-[9px] uppercase mb-8"
+          style={{ color: ACCENT }}
+        >
+          The Complete History of Aethara
+        </motion.p>
+
+        <motion.h1
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1.2, delay: 0.5 }}
+          className="font-display text-6xl sm:text-8xl md:text-[10rem] leading-[0.85] text-center text-foreground/90"
+        >
+          THE
+          <br />
+          LOREBOOK
+        </motion.h1>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1.5, delay: 1.2 }}
+          className="max-w-lg mx-auto mt-12 text-center"
+        >
+          <p className="text-foreground/30 text-sm italic leading-[2] font-light">
+            "{lorebookEpigraph.quote}"
+          </p>
+          <p className="mt-4 text-[10px] tracking-[0.25em] uppercase" style={{ color: ACCENT_DIM }}>
+            — {lorebookEpigraph.attribution}
+          </p>
+        </motion.div>
+
+        {/* Scroll indicator */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 2, duration: 1 }}
+          className="absolute bottom-12"
+        >
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1, delay: 0.2 }}
-            className="flex items-center justify-center gap-4 mb-8"
+            animate={{ y: [0, 8, 0] }}
+            transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
           >
-            <div className="h-px w-12 bg-gradient-to-r from-transparent to-foreground/15" />
-            <span className="font-body text-muted-foreground tracking-[0.6em] text-[9px] uppercase">
-              The Complete History of Aethara
-            </span>
-            <div className="h-px w-12 bg-gradient-to-l from-transparent to-foreground/15" />
+            <svg width="16" height="24" viewBox="0 0 16 24" fill="none" stroke={ACCENT_DIM} strokeWidth="1">
+              <path d="M8 4v16M2 14l6 6 6-6" />
+            </svg>
           </motion.div>
-
-          <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1, delay: 0.4 }}
-            className="font-display text-6xl md:text-9xl text-foreground mb-10"
-            style={{ textShadow: `0 0 80px ${accentColor}` }}
-          >
-            THE LOREBOOK
-          </motion.h1>
-
-          <motion.blockquote
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 1.2, delay: 0.8 }}
-            className="max-w-xl mx-auto"
-          >
-            <p className="text-foreground/40 text-sm md:text-base italic leading-[1.9] font-light">
-              "{lorebookEpigraph.quote}"
-            </p>
-            <footer className="mt-4 text-foreground/20 text-[10px] tracking-[0.2em] uppercase not-italic">
-              — {lorebookEpigraph.attribution}
-            </footer>
-          </motion.blockquote>
-
-          {/* Scroll hint */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.5, duration: 1 }}
-            className="mt-16"
-          >
-            <motion.div
-              animate={{ y: [0, 6, 0] }}
-              transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-              className="w-5 h-8 mx-auto rounded-full border border-foreground/15 flex items-start justify-center pt-1.5"
-            >
-              <div className="w-1 h-2 rounded-full bg-foreground/30" />
-            </motion.div>
-          </motion.div>
-        </div>
+        </motion.div>
       </section>
 
-      {/* ─── Volume Navigation ─── */}
-      <div className="sticky top-16 z-40 bg-background/70 backdrop-blur-xl border-b border-foreground/5">
-        <div className="container mx-auto px-4">
-          <div className="flex overflow-x-auto gap-1 py-2 scrollbar-hide justify-center">
-            {volumeLabels.map((vol) => (
-              <VolumeSelectorCard
-                key={vol.num}
-                vol={vol}
-                isActive={activeVolume === vol.num}
-                onClick={() => setActiveVolume(vol.num)}
-                accentColor={volumeAccentColors[vol.num]}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* ── Volume Navigation ── */}
+      <VolumeNav activeVolume={activeVolume} setActiveVolume={setActiveVolume} />
 
-      {/* ─── Content ─── */}
-      <main ref={mainRef} className="relative z-10 container mx-auto px-6 py-16 md:py-28">
+      {/* ── Content ── */}
+      <main ref={mainRef} className="relative z-10 container mx-auto px-6 py-20 md:py-32">
         <AnimatePresence mode="wait">
           {activeVolume > 0 ? (
             <motion.div
               key={activeVolume}
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -30 }}
-              transition={{ duration: 0.6, ease: "easeOut" }}
-              className="max-w-3xl mx-auto"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.8 }}
+              className="max-w-2xl mx-auto"
             >
-              {/* Volume header */}
+              {/* Volume header — bold, centered */}
               <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.8, delay: 0.1 }}
-                className="text-center mb-20 md:mb-28"
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 1, delay: 0.2 }}
+                className="text-center mb-24 md:mb-36"
               >
                 <span
-                  className="font-display text-6xl md:text-8xl opacity-10 block mb-2"
-                  style={{ color: accentColor }}
+                  className="font-display text-[8rem] md:text-[12rem] leading-none block"
+                  style={{ color: "hsl(0 0% 6%)" }}
                 >
                   {volumeLabels.find((v) => v.num === activeVolume)?.roman}
                 </span>
-                <p className="font-body text-foreground/15 tracking-[0.5em] text-[9px] uppercase mb-4">
-                  Volume {activeVolume}
-                </p>
-                <h2 className="font-display text-3xl md:text-5xl text-foreground/90">
+                <h2 className="font-display text-2xl md:text-4xl text-foreground/80 -mt-8 md:-mt-12">
                   {volumeLabels.find((v) => v.num === activeVolume)?.label.toUpperCase()}
                 </h2>
-                <div
-                  className="w-16 h-0.5 mx-auto mt-6 rounded-full"
-                  style={{ background: accentColor, opacity: 0.5 }}
-                />
+                <div className="w-8 h-[1px] mx-auto mt-8" style={{ background: ACCENT_DIM }} />
               </motion.div>
 
               {/* Chapters */}
               {activeChapters.map((chapter, ci) => (
-                <article key={chapter.id} className="mb-24 md:mb-32">
+                <article key={chapter.id} className="mb-28 md:mb-40">
                   <motion.div
-                    initial={{ opacity: 0, y: 30 }}
+                    initial={{ opacity: 0, y: 40 }}
                     whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: "-80px" }}
-                    transition={{ duration: 0.7, delay: ci * 0.05 }}
+                    viewport={{ once: true, margin: "-100px" }}
+                    transition={{ duration: 0.8, delay: ci * 0.05 }}
                   >
                     {/* Chapter title */}
-                    <h3 className="font-display text-2xl md:text-4xl text-foreground mb-10 tracking-wide">
+                    <h3 className="font-display text-xl md:text-3xl text-foreground/85 mb-12 tracking-wide">
                       {chapter.title}
                     </h3>
 
-                    {/* Paragraphs with drop cap on first */}
+                    {/* Paragraphs */}
                     {chapter.content.map((para, pi) => (
                       <motion.p
                         key={pi}
-                        initial={{ opacity: 0, y: 15 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true, margin: "-30px" }}
-                        transition={{ duration: 0.5, delay: pi * 0.03 }}
-                        className={`text-foreground/55 text-[15px] md:text-base leading-[2] mb-6 ${
-                          pi === 0 ? "lore-drop-cap text-foreground/60" : ""
+                        initial={{ opacity: 0 }}
+                        whileInView={{ opacity: 1 }}
+                        viewport={{ once: true, margin: "-40px" }}
+                        transition={{ duration: 0.6, delay: pi * 0.03 }}
+                        className={`text-foreground/40 text-[15px] leading-[2.1] mb-7 ${
+                          pi === 0 ? "lore-drop-cap text-foreground/50" : ""
                         }`}
                       >
                         {renderParagraphWithPortraits(para)}
@@ -393,51 +310,50 @@ const Lore = () => {
                     {chapter.subsections?.map((sub, si) => (
                       <motion.div
                         key={si}
-                        initial={{ opacity: 0, x: -10 }}
-                        whileInView={{ opacity: 1, x: 0 }}
+                        initial={{ opacity: 0 }}
+                        whileInView={{ opacity: 1 }}
                         viewport={{ once: true }}
-                        transition={{ duration: 0.5 }}
-                        className="lore-subsection my-10"
-                        style={{
-                          borderImage: `linear-gradient(to bottom, ${accentColor}, transparent) 1`,
-                        }}
+                        transition={{ duration: 0.6 }}
+                        className="mt-16 mb-12 pl-6"
+                        style={{ borderLeft: `1px solid ${ACCENT_DIM}` }}
                       >
-                        <h4 className="font-heading text-lg md:text-xl text-foreground/80 mb-6">
+                        <h4 className="font-display text-sm md:text-base text-foreground/60 mb-6 tracking-[0.1em]">
                           {sub.title}
                         </h4>
                         {sub.content.map((para, pi) => (
-                          <motion.p
+                          <p
                             key={pi}
-                            initial={{ opacity: 0 }}
-                            whileInView={{ opacity: 1 }}
-                            viewport={{ once: true }}
-                            transition={{ duration: 0.4, delay: pi * 0.03 }}
-                            className="text-foreground/50 text-[15px] md:text-base leading-[2] mb-5"
+                            className="text-foreground/35 text-[15px] leading-[2.1] mb-6"
                           >
                             {renderParagraphWithPortraits(para)}
-                          </motion.p>
+                          </p>
                         ))}
                       </motion.div>
                     ))}
 
-                    {/* Chapter quote */}
+                    {/* Quote */}
                     {chapter.quote && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        whileInView={{ opacity: 1, y: 0 }}
+                      <motion.blockquote
+                        initial={{ opacity: 0 }}
+                        whileInView={{ opacity: 1 }}
                         viewport={{ once: true }}
-                        transition={{ duration: 0.6 }}
-                        className="lore-quote-block"
+                        transition={{ duration: 0.8 }}
+                        className="my-16 py-8 px-0 border-l-0 text-center"
                       >
-                        <p className="italic text-foreground/35 text-sm leading-[1.9] relative z-10">
-                          {chapter.quote}
+                        <div className="w-4 h-[1px] mx-auto mb-6" style={{ background: ACCENT_DIM }} />
+                        <p className="italic text-foreground/25 text-sm leading-[2] max-w-md mx-auto">
+                          "{chapter.quote}"
                         </p>
-                      </motion.div>
+                        <div className="w-4 h-[1px] mx-auto mt-6" style={{ background: ACCENT_DIM }} />
+                      </motion.blockquote>
                     )}
                   </motion.div>
 
+                  {/* Chapter separator */}
                   {ci < activeChapters.length - 1 && (
-                    <ChapterDivider color={accentColor} />
+                    <div className="flex justify-center my-20">
+                      <div className="w-1 h-1 rounded-full" style={{ background: ACCENT_DIM }} />
+                    </div>
                   )}
                 </article>
               ))}
@@ -449,131 +365,96 @@ const Lore = () => {
                   whileInView={{ opacity: 1 }}
                   viewport={{ once: true }}
                   transition={{ duration: 1 }}
-                  className="mt-24 md:mt-32 pt-16"
+                  className="mt-32 pt-20"
                 >
-                  <div className="lore-chapter-divider mb-12">
-                    <span className="w-3 h-3 rotate-45 flex-shrink-0 bg-foreground/10" />
-                  </div>
-                  <p className="font-body text-foreground/15 tracking-[0.5em] text-[9px] uppercase mb-4 text-center">
+                  <div className="w-8 h-[1px] mx-auto mb-16" style={{ background: ACCENT_DIM }} />
+                  <p className="text-[10px] tracking-[0.4em] uppercase text-center mb-6" style={{ color: ACCENT_DIM }}>
                     Epilogue
                   </p>
-                  <h3 className="font-display text-3xl md:text-4xl text-foreground/90 mb-12 text-center">
+                  <h3 className="font-display text-2xl md:text-4xl text-foreground/80 mb-16 text-center">
                     THE WORLD TODAY
                   </h3>
                   {epilogue.map((para, i) => (
-                    <motion.p
+                    <p
                       key={i}
-                      initial={{ opacity: 0, y: 15 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.5, delay: i * 0.03 }}
-                      className={`text-[15px] md:text-base leading-[2] mb-6 ${
+                      className={`text-[15px] leading-[2.1] mb-7 ${
                         para.length < 30
-                          ? "text-foreground/60 font-heading text-center text-lg my-10"
-                          : "text-foreground/50"
+                          ? "text-foreground/50 font-display text-center text-lg my-12"
+                          : "text-foreground/40"
                       }`}
                     >
                       {renderParagraphWithPortraits(para)}
-                    </motion.p>
+                    </p>
                   ))}
                 </motion.article>
               )}
             </motion.div>
           ) : (
-            /* ─── Appendices ─── */
+            /* ── Appendices ── */
             <motion.div
               key="appendices"
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -30 }}
-              transition={{ duration: 0.6 }}
-              className="max-w-5xl mx-auto"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.8 }}
+              className="max-w-4xl mx-auto"
             >
               {/* Timeline */}
-              <section className="mb-28">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  className="text-center mb-14"
-                >
-                  <h2 className="font-display text-3xl md:text-5xl text-foreground/90 mb-3">
-                    TIMELINE OF AETHARA
+              <section className="mb-32">
+                <div className="text-center mb-20">
+                  <h2 className="font-display text-2xl md:text-4xl text-foreground/80 mb-3">
+                    TIMELINE
                   </h2>
-                  <div className="w-12 h-0.5 mx-auto bg-foreground/10 rounded-full" />
-                </motion.div>
+                  <div className="w-6 h-[1px] mx-auto" style={{ background: ACCENT_DIM }} />
+                </div>
 
-                <div className="relative">
-                  {/* Vertical line */}
-                  <div className="absolute left-4 md:left-[88px] top-0 bottom-0 w-px bg-gradient-to-b from-foreground/10 via-foreground/5 to-transparent" />
-
+                <div className="space-y-0">
                   {timelineAppendix.map((entry, i) => (
                     <motion.div
                       key={i}
-                      initial={{ opacity: 0, x: -20 }}
-                      whileInView={{ opacity: 1, x: 0 }}
+                      initial={{ opacity: 0 }}
+                      whileInView={{ opacity: 1 }}
                       viewport={{ once: true, margin: "-30px" }}
-                      transition={{ duration: 0.5, delay: i * 0.04 }}
-                      className="relative grid grid-cols-[40px_1fr] md:grid-cols-[90px_90px_1fr] gap-4 md:gap-6 py-6 group"
+                      transition={{ duration: 0.5, delay: i * 0.03 }}
+                      className="grid grid-cols-[100px_1fr] md:grid-cols-[140px_100px_1fr] gap-6 py-5 border-b border-foreground/[0.04] group"
                     >
-                      {/* Dot */}
-                      <div className="flex justify-center pt-1.5 md:col-start-1">
-                        <div className="lore-timeline-dot" />
-                      </div>
-
-                      <div className="hidden md:block">
-                        <span className="font-heading text-xs text-foreground/50 group-hover:text-foreground/70 transition-colors">
-                          {entry.era}
-                        </span>
-                        <span className="block font-body text-[10px] text-foreground/20 mt-0.5">
-                          {entry.duration}
-                        </span>
-                      </div>
-
-                      <div>
-                        <span className="md:hidden font-heading text-xs text-foreground/50 block mb-1">
-                          {entry.era}
-                        </span>
-                        <span className="text-foreground/45 text-sm leading-relaxed group-hover:text-foreground/60 transition-colors">
-                          {entry.events}
-                        </span>
-                      </div>
+                      <span className="font-display text-[11px] tracking-[0.1em]" style={{ color: ACCENT_DIM }}>
+                        {entry.era}
+                      </span>
+                      <span className="hidden md:block text-foreground/15 text-xs">
+                        {entry.duration}
+                      </span>
+                      <span className="text-foreground/35 text-sm leading-relaxed group-hover:text-foreground/50 transition-colors duration-500">
+                        {entry.events}
+                      </span>
                     </motion.div>
                   ))}
                 </div>
               </section>
 
               {/* Glossary */}
-              <section className="mb-28">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  className="text-center mb-14"
-                >
-                  <h2 className="font-display text-3xl md:text-5xl text-foreground/90 mb-3">
+              <section className="mb-32">
+                <div className="text-center mb-20">
+                  <h2 className="font-display text-2xl md:text-4xl text-foreground/80 mb-3">
                     GLOSSARY
                   </h2>
-                  <p className="text-foreground/25 text-xs tracking-[0.2em] uppercase">
-                    Terms of the Shattered World
-                  </p>
-                  <div className="w-12 h-0.5 mx-auto mt-4 bg-foreground/10 rounded-full" />
-                </motion.div>
+                  <div className="w-6 h-[1px] mx-auto" style={{ background: ACCENT_DIM }} />
+                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-0">
                   {glossary.map((entry, i) => (
                     <motion.div
                       key={i}
-                      initial={{ opacity: 0, scale: 0.97 }}
-                      whileInView={{ opacity: 1, scale: 1 }}
-                      viewport={{ once: true, margin: "-20px" }}
+                      initial={{ opacity: 0 }}
+                      whileInView={{ opacity: 1 }}
+                      viewport={{ once: true }}
                       transition={{ duration: 0.4, delay: i * 0.02 }}
-                      className="lore-glossary-card rounded-sm"
+                      className="py-5 border-b border-foreground/[0.04]"
                     >
-                      <dt className="font-heading text-sm text-foreground/75 mb-1.5">
+                      <dt className="font-display text-xs tracking-[0.1em] text-foreground/60 mb-1.5">
                         {entry.term}
                       </dt>
-                      <dd className="text-foreground/35 text-xs leading-relaxed">
+                      <dd className="text-foreground/30 text-sm leading-relaxed">
                         {entry.definition}
                       </dd>
                     </motion.div>
@@ -583,66 +464,42 @@ const Lore = () => {
 
               {/* Character Index */}
               <section>
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  className="text-center mb-14"
-                >
-                  <h2 className="font-display text-3xl md:text-5xl text-foreground/90 mb-3">
+                <div className="text-center mb-20">
+                  <h2 className="font-display text-2xl md:text-4xl text-foreground/80 mb-3">
                     CHARACTER INDEX
                   </h2>
-                  <p className="text-foreground/25 text-xs tracking-[0.2em] uppercase">
-                    All 54 champions, organized by tribe
+                  <p className="text-foreground/15 text-[10px] tracking-[0.3em] uppercase mt-4">
+                    54 champions · Four allegiances
                   </p>
-                  <div className="w-12 h-0.5 mx-auto mt-4 bg-foreground/10 rounded-full" />
-                </motion.div>
+                  <div className="w-6 h-[1px] mx-auto mt-6" style={{ background: ACCENT_DIM }} />
+                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
                   {tribeRosters.map((roster) => (
-                    <motion.div
-                      key={roster.tribe}
-                      initial={{ opacity: 0, y: 20 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.5 }}
-                      className={`rounded-sm overflow-hidden border border-foreground/5 bg-gradient-to-br ${
-                        tribeGradientMap[roster.color] || "from-card/40 to-transparent"
-                      }`}
-                    >
+                    <div key={roster.tribe}>
                       {/* Tribe header */}
-                      <div className="px-6 py-5 border-b border-foreground/5">
-                        <h3
-                          className="font-display text-xl"
-                          style={{ color: tribeColorMap[roster.color] || "hsl(var(--foreground) / 0.7)" }}
-                        >
+                      <div className="mb-6 pb-4 border-b border-foreground/[0.06]">
+                        <h3 className="font-display text-base tracking-[0.1em] text-foreground/70">
                           {roster.tribe}
                         </h3>
-                        <span className="text-foreground/20 text-[10px] font-body uppercase tracking-[0.2em]">
+                        <span className="text-foreground/15 text-[10px] tracking-[0.2em] uppercase">
                           {roster.element}
                         </span>
                       </div>
 
                       {/* Characters */}
-                      <div className="px-4 py-2">
+                      <div className="space-y-0">
                         {roster.characters.map((char, i) => {
                           const portrait = characterPortraits[char.name];
                           return (
-                            <motion.div
+                            <div
                               key={i}
-                              initial={{ opacity: 0, x: -10 }}
-                              whileInView={{ opacity: 1, x: 0 }}
-                              viewport={{ once: true }}
-                              transition={{ duration: 0.3, delay: i * 0.02 }}
-                              className="flex items-center gap-3 py-2.5 border-b border-foreground/3 last:border-b-0 group hover:bg-foreground/[0.02] px-2 rounded-sm transition-colors"
+                              className="flex items-center gap-3 py-2.5 group"
                             >
                               {portrait ? (
                                 <span
-                                  className="w-9 h-9 rounded-full overflow-hidden border flex-shrink-0 transition-all duration-300 group-hover:scale-105"
-                                  style={{
-                                    borderColor: `${tribeColorMap[roster.color]}40`,
-                                    boxShadow: `0 0 8px ${tribeColorMap[roster.color]}20`,
-                                  }}
+                                  className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0"
+                                  style={{ border: `1px solid hsl(0 0% 15%)` }}
                                 >
                                   <img
                                     src={portrait.image}
@@ -651,65 +508,47 @@ const Lore = () => {
                                   />
                                 </span>
                               ) : (
-                                <span
-                                  className="w-9 h-9 rounded-full flex-shrink-0"
-                                  style={{ background: `${tribeColorMap[roster.color]}10` }}
-                                />
+                                <span className="w-7 h-7 rounded-full flex-shrink-0 bg-foreground/[0.03]" />
                               )}
                               <div className="min-w-0 flex-1">
-                                <span className="font-heading text-sm text-foreground/65 block truncate group-hover:text-foreground/80 transition-colors">
+                                <span className="text-sm text-foreground/50 group-hover:text-foreground/70 transition-colors duration-300">
                                   {char.name}
                                 </span>
-                                <span className="text-foreground/25 text-[10px] block truncate">
+                                <span className="text-foreground/15 text-[10px] block">
                                   {char.title}
                                 </span>
                               </div>
-                              <span className="text-foreground/20 text-[10px] hidden md:block flex-shrink-0 max-w-[120px] truncate">
-                                {char.role}
-                              </span>
-                            </motion.div>
+                            </div>
                           );
                         })}
                       </div>
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
               </section>
 
-              {/* Final quote */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 1 }}
-                className="text-center mt-24 pt-16"
-              >
-                <div className="lore-chapter-divider mb-10">
-                  <span className="w-2 h-2 rotate-45 flex-shrink-0 bg-foreground/10" />
-                </div>
-                <p className="text-foreground/20 text-sm italic max-w-xl mx-auto leading-[2]">
-                  "Four realms. Four wars. One broken throne. And in the spaces between, two ghosts who cannot forgive what they became."
+              {/* Closing */}
+              <div className="text-center mt-32">
+                <div className="w-6 h-[1px] mx-auto mb-10" style={{ background: ACCENT_DIM }} />
+                <p className="text-foreground/15 text-sm italic max-w-md mx-auto leading-[2]">
+                  "Four realms. Four wars. One broken throne."
                 </p>
-              </motion.div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Back to home */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          className="text-center mt-24"
-        >
+        {/* Back link */}
+        <div className="text-center mt-28">
           <Link
             to="/"
-            className="inline-flex items-center gap-2 font-body text-xs text-muted-foreground hover:text-foreground transition-colors tracking-[0.15em] uppercase group"
+            className="inline-flex items-center gap-3 text-[10px] tracking-[0.2em] uppercase transition-colors duration-300 group"
+            style={{ color: ACCENT_DIM }}
           >
-            <span className="w-4 h-px bg-muted-foreground group-hover:w-8 transition-all" />
-            Return to the dominion
+            <span className="w-4 h-[1px] group-hover:w-8 transition-all duration-300" style={{ background: ACCENT_DIM }} />
+            Return
           </Link>
-        </motion.div>
+        </div>
       </main>
 
       <div className="relative z-10">
