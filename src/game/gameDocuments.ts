@@ -6,11 +6,11 @@
 // ============================================================================
 
 // @ts-ignore - Vite ?raw imports
-import gameDesignRaw from '../../../docs/game_design.md?raw';
+import gameDesignRaw from '../../docs/game_design.md?raw';
 // @ts-ignore
-import cardRosterRaw from '../../../docs/card_roster.md?raw';
+import cardRosterRaw from '../../docs/card_roster.md?raw';
 // @ts-ignore
-import lorebookRaw from '../../../docs/lorebook.md?raw';
+import lorebookRaw from '../../docs/lorebook.md?raw';
 
 // ============================================================================
 // Raw document store - keyed by lookup name
