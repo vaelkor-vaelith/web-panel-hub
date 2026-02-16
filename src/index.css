@@ -1,0 +1,193 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&family=Oswald:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 3%;
+    --foreground: 0 0% 88%;
+
+    --card: 0 0% 6%;
+    --card-foreground: 0 0% 88%;
+
+    --popover: 0 0% 6%;
+    --popover-foreground: 0 0% 88%;
+
+    --primary: 0 0% 80%;
+    --primary-foreground: 0 0% 3%;
+
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 0 0% 75%;
+
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 45%;
+
+    --accent: 0 0% 70%;
+    --accent-foreground: 0 0% 3%;
+
+    --destructive: 0 60% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 12%;
+    --input: 0 0% 12%;
+    --ring: 0 0% 40%;
+
+    --radius: 0.125rem;
+
+    /* Tribal colors - muted, subtle */
+    --shadow: 270 30% 35%;
+    --shadow-glow: 270 40% 50%;
+    --light: 45 40% 50%;
+    --light-glow: 45 50% 60%;
+    --fire: 0 50% 40%;
+    --fire-glow: 10 55% 50%;
+    --earth: 140 25% 30%;
+    --earth-glow: 140 35% 42%;
+    --mythic: 0 45% 35%;
+    --mythic-glow: 0 55% 45%;
+
+    --sidebar-background: 0 0% 4%;
+    --sidebar-foreground: 0 0% 88%;
+    --sidebar-primary: 0 0% 80%;
+    --sidebar-primary-foreground: 0 0% 3%;
+    --sidebar-accent: 0 0% 10%;
+    --sidebar-accent-foreground: 0 0% 88%;
+    --sidebar-border: 0 0% 12%;
+    --sidebar-ring: 0 0% 40%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Space Grotesk', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+}
+
+@layer components {
+  .font-display {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .font-heading {
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  .comic-border {
+    border: 1px solid hsl(var(--foreground) / 0.2);
+  }
+
+  .comic-panel {
+    background: hsl(var(--card));
+    position: relative;
+    overflow: hidden;
+  }
+
+  .glow-shadow {
+    text-shadow: 0 0 30px hsl(var(--foreground) / 0.15);
+  }
+
+  .glow-shadow-accent {
+    text-shadow: 0 0 30px hsl(var(--foreground) / 0.1);
+  }
+
+  .tribe-glow-shadow {
+    box-shadow: 0 0 20px var(--tribe-color, hsl(var(--foreground) / 0.1));
+  }
+
+  .halftone-overlay {
+    position: relative;
+  }
+
+  .card-rarity-common {
+    border-color: hsl(0 0% 25%);
+  }
+
+  .card-rarity-rare {
+    border-color: hsl(0 0% 35%);
+  }
+
+  .card-rarity-epic {
+    border-color: hsl(0 0% 45%);
+  }
+
+  .card-rarity-legendary {
+    border-color: hsl(0 0% 60%);
+    box-shadow: 0 0 15px hsl(0 0% 60% / 0.15);
+  }
+
+  .card-rarity-mythic {
+    border-color: hsl(0 0% 70%);
+    box-shadow: 0 0 20px hsl(0 0% 70% / 0.2);
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(0 0% 15%);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(0 0% 25%);
+}
+
+/* Section divider - subtle */
+.comic-divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, hsl(var(--foreground) / 0.1), transparent);
+}
+
+@keyframes shake {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  15% { transform: translate(-6px, 2px) rotate(-0.5deg); }
+  30% { transform: translate(5px, -3px) rotate(0.4deg); }
+  45% { transform: translate(-4px, 1px) rotate(-0.3deg); }
+  60% { transform: translate(3px, -1px) rotate(0.2deg); }
+  75% { transform: translate(-2px, 1px) rotate(-0.1deg); }
+  90% { transform: translate(1px, 0px) rotate(0deg); }
+}
+
+@keyframes mythicShake {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  10% { transform: translate(-12px, 8px) rotate(-1.5deg); }
+  20% { transform: translate(14px, -6px) rotate(2deg); }
+  30% { transform: translate(-8px, 14px) rotate(-1deg); }
+  40% { transform: translate(10px, -12px) rotate(1.5deg); }
+  50% { transform: translate(-14px, 6px) rotate(-2deg); }
+  60% { transform: translate(8px, 10px) rotate(1deg); }
+  70% { transform: translate(-6px, -14px) rotate(-1.5deg); }
+  80% { transform: translate(12px, 8px) rotate(2deg); }
+  90% { transform: translate(-10px, -8px) rotate(-1deg); }
+}
