@@ -31,7 +31,9 @@ import CardInfoPanel from "./CardInfoPanel";
 import AttackProjectiles from "./AttackProjectiles";
 import MythicEffects from "./MythicEffects";
 import ThinkingPanel from "./ThinkingPanel";
+import DraftScreen from "./DraftScreen";
 import type { MythicEffectType } from "./MythicEffects";
+import type { CardData } from "@/data/gameData";
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 // ============================================================================
