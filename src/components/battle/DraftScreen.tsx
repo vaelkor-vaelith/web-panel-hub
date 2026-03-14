@@ -12,12 +12,12 @@ import ThinkingPanel from './ThinkingPanel';
 import AmbientParticles from './AmbientParticles';
 import castleObsidianVeil from '@/assets/castle-obsidian-veil.jpg';
 
-const TRIBE_CONFIG: Record<string, { hue: number; label: string }> = {
-  'Obsidian Veil': { hue: 270, label: 'SHADOW' },
-  'Radiant Sanctum': { hue: 40, label: 'LIGHT' },
-  'Emberheart Pact': { hue: 15, label: 'FIRE' },
-  'Ironroot Bastion': { hue: 140, label: 'EARTH' },
-  'Tribeless': { hue: 0, label: 'MYTHIC' },
+const TRIBE_CONFIG: Record<string, { hue: number; label: string; icon: string }> = {
+  'Obsidian Veil': { hue: 270, label: 'SHADOW', icon: '🌑' },
+  'Radiant Sanctum': { hue: 40, label: 'LIGHT', icon: '✦' },
+  'Emberheart Pact': { hue: 15, label: 'FIRE', icon: '🔥' },
+  'Ironroot Bastion': { hue: 140, label: 'EARTH', icon: '🌿' },
+  'Tribeless': { hue: 0, label: 'MYTHIC', icon: '⚔' },
 };
 
 const RARITY_BORDER: Record<string, string> = {
@@ -38,6 +38,15 @@ interface DraftScreenProps {
   onCancel: () => void;
 }
 
+interface DraftLogEntry {
+  step: number;
+  player: 'p1' | 'p2';
+  playerName: string;
+  action: 'ban' | 'pick';
+  card: CardData;
+  timestamp: number;
+}
+
 export default function DraftScreen({ mode, p1Name, p2Name, onComplete, onCancel }: DraftScreenProps) {
   const [draft, setDraft] = useState<DraftState>(createInitialDraft);
   const [aiThinking1, setAiThinking1] = useState('');
@@ -45,14 +54,24 @@ export default function DraftScreen({ mode, p1Name, p2Name, onComplete, onCancel
   const [processingAI, setProcessingAI] = useState(false);
   const [hoveredCard, setHoveredCard] = useState<CardData | null>(null);
   const [recentCardId, setRecentCardId] = useState<string | null>(null);
+  const [activeAI, setActiveAI] = useState<'p1' | 'p2' | null>(null);
+  const [draftLog, setDraftLog] = useState<DraftLogEntry[]>([]);
   const processingRef = useRef(false);
+  const logScrollRef = useRef<HTMLDivElement>(null);
 
   const step = getCurrentStep(draft);
+
+  // Auto-scroll draft log
+  useEffect(() => {
+    if (logScrollRef.current) {
+      logScrollRef.current.scrollTop = logScrollRef.current.scrollHeight;
+    }
+  }, [draftLog]);
 
   // Draft completion → transition to battle
   useEffect(() => {
     if (draft.complete) {
-      const timer = setTimeout(() => onComplete(draft.p1Picks, draft.p2Picks), 2000);
+      const timer = setTimeout(() => onComplete(draft.p1Picks, draft.p2Picks), 3000);
       return () => clearTimeout(timer);
     }
   }, [draft.complete, draft.p1Picks, draft.p2Picks, onComplete]);
@@ -67,30 +86,45 @@ export default function DraftScreen({ mode, p1Name, p2Name, onComplete, onCancel
 
     processingRef.current = true;
     setProcessingAI(true);
+    setActiveAI(currentStep.player);
 
     const runAI = async () => {
-      await new Promise(r => setTimeout(r, 800));
+      await new Promise(r => setTimeout(r, 1000));
 
       let cardId: string;
       if (mode === 'aivai') {
         if (currentStep.player === 'p1') {
-          setAiThinking1('Analyzing draft options...\n');
+          setAiThinking1('');
           cardId = await draftWithGPT(draft, 'p1', p1Name, (t) => setAiThinking1(t));
         } else {
-          setAiThinking2('Analyzing draft options...\n');
+          setAiThinking2('');
           cardId = await draftWithDeepSeek(draft, 'p2', p2Name, (t) => setAiThinking2(t));
         }
       } else {
-        setAiThinking2('Analyzing draft options...\n');
+        setAiThinking2('');
         cardId = await draftWithGPT(draft, 'p2', p2Name, (t) => setAiThinking2(t));
+      }
+
+      // Find the card for the log
+      const card = draft.pool.find(c => c.id === cardId);
+      if (card) {
+        setDraftLog(prev => [...prev, {
+          step: currentStep.step,
+          player: currentStep.player,
+          playerName: currentStep.player === 'p1' ? p1Name : p2Name,
+          action: currentStep.phase,
+          card,
+          timestamp: Date.now(),
+        }]);
       }
 
       // Highlight card briefly
       setRecentCardId(cardId);
-      await new Promise(r => setTimeout(r, 600));
+      await new Promise(r => setTimeout(r, 800));
 
       setDraft(prev => executeDraftAction(prev, cardId));
-      setTimeout(() => setRecentCardId(null), 300);
+      setTimeout(() => setRecentCardId(null), 400);
+      setActiveAI(null);
       processingRef.current = false;
       setProcessingAI(false);
     };
@@ -104,8 +138,18 @@ export default function DraftScreen({ mode, p1Name, p2Name, onComplete, onCancel
     if (draft.complete || !currentStep || processingAI) return;
     if (mode === 'aivai') return;
     if (currentStep.player !== 'p1') return;
+
+    setDraftLog(prev => [...prev, {
+      step: currentStep.step,
+      player: 'p1',
+      playerName: p1Name,
+      action: currentStep.phase,
+      card,
+      timestamp: Date.now(),
+    }]);
+
     setDraft(prev => executeDraftAction(prev, card.id));
-  }, [draft, processingAI, mode]);
+  }, [draft, processingAI, mode, p1Name]);
 
   // Group pool by tribe
   const poolByTribe: Record<string, CardData[]> = {};
@@ -119,12 +163,26 @@ export default function DraftScreen({ mode, p1Name, p2Name, onComplete, onCancel
 
   const isPlayerTurn = step && !processingAI && step.player === 'p1' && mode !== 'aivai';
 
+  // Calculate deck stats
+  const calcStats = (picks: CardData[]) => {
+    const tribes: Record<string, number> = {};
+    let totalCost = 0;
+    picks.forEach(c => {
+      tribes[c.tribe] = (tribes[c.tribe] || 0) + 1;
+      totalCost += c.cost;
+    });
+    return { tribes, avgCost: picks.length ? (totalCost / picks.length).toFixed(1) : '0' };
+  };
+
+  const p1Stats = calcStats(draft.p1Picks);
+  const p2Stats = calcStats(draft.p2Picks);
+
   return (
     <div className="w-full h-screen bg-background overflow-hidden relative flex">
       {/* Background */}
       <div className="absolute inset-0 z-0">
-        <img src={castleObsidianVeil} alt="bg" className="w-full h-full object-cover" style={{ opacity: 0.08 }} />
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/90 to-black/70" />
+        <img src={castleObsidianVeil} alt="bg" className="w-full h-full object-cover" style={{ opacity: 0.06 }} />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/95 to-black/80" />
       </div>
       <AmbientParticles />
 
@@ -135,7 +193,7 @@ export default function DraftScreen({ mode, p1Name, p2Name, onComplete, onCancel
           playerName={p1Name}
           isActive={true}
           side="left"
-          model="draft-strategist"
+          model="GPT-5.2 • draft-strategist"
           accentHue={160}
         />
       )}
@@ -145,7 +203,9 @@ export default function DraftScreen({ mode, p1Name, p2Name, onComplete, onCancel
         {/* Header */}
         <div className="shrink-0 flex items-center justify-between px-4 pt-3 pb-1">
           <div className="flex items-center gap-3">
-            <span className="font-display text-[10px] tracking-[0.3em] text-muted-foreground">CAPTAIN MODE</span>
+            <span className="font-display text-[10px] tracking-[0.3em] text-muted-foreground">
+              CAPTAIN MODE {mode === 'aivai' ? '— WAR OF MINDS' : ''}
+            </span>
             {step && (
               <span
                 className="font-display text-[10px] tracking-[0.15em] px-2 py-0.5 rounded"
@@ -161,7 +221,9 @@ export default function DraftScreen({ mode, p1Name, p2Name, onComplete, onCancel
           </div>
           <div className="flex items-center gap-3">
             {step && (
-              <span className="font-mono text-[9px] text-muted-foreground">Step {step.step}/36</span>
+              <span className="font-mono text-[9px] text-muted-foreground">
+                Step {step.step}/36 • Pool: {draft.pool.length}
+              </span>
             )}
             <button
               onClick={onCancel}
@@ -172,7 +234,7 @@ export default function DraftScreen({ mode, p1Name, p2Name, onComplete, onCancel
         </div>
 
         {/* Current Action Banner */}
-        <div className="shrink-0 flex items-center justify-center py-1">
+        <div className="shrink-0 flex items-center justify-center py-1.5">
           {draft.complete ? (
             <motion.div
               className="font-display text-lg tracking-[0.3em]"
@@ -183,15 +245,37 @@ export default function DraftScreen({ mode, p1Name, p2Name, onComplete, onCancel
               DRAFT COMPLETE — ENTERING BATTLE
             </motion.div>
           ) : step ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <motion.div
-                className="font-display text-sm tracking-[0.2em]"
-                style={{ color: isPlayerTurn ? 'hsl(40 60% 65%)' : 'hsl(0 0% 50%)' }}
+                className="flex items-center gap-2"
                 key={step.step}
                 initial={{ y: -8, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
               >
-                {step.player === 'p1' ? p1Name : p2Name} — {step.phase === 'ban' ? 'BAN' : 'PICK'}
+                {/* Active player indicator */}
+                <motion.div
+                  className="w-2 h-2 rounded-full"
+                  style={{
+                    background: step.player === 'p1' ? 'hsl(160 50% 50%)' : 'hsl(270 40% 55%)',
+                    boxShadow: `0 0 8px ${step.player === 'p1' ? 'hsl(160 50% 50% / 0.5)' : 'hsl(270 40% 55% / 0.5)'}`,
+                  }}
+                  animate={{ scale: [1, 1.3, 1] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                />
+                <span
+                  className="font-display text-sm tracking-[0.2em]"
+                  style={{ color: step.player === 'p1' ? 'hsl(160 50% 65%)' : 'hsl(270 40% 65%)' }}
+                >
+                  {step.player === 'p1' ? p1Name : p2Name}
+                </span>
+                <span
+                  className="font-display text-sm tracking-[0.2em]"
+                  style={{
+                    color: step.phase === 'ban' ? 'hsl(0 60% 55%)' : 'hsl(210 60% 60%)',
+                  }}
+                >
+                  {step.phase === 'ban' ? '— BAN' : '— PICK'}
+                </span>
               </motion.div>
               {isPlayerTurn && (
                 <motion.span
@@ -205,18 +289,26 @@ export default function DraftScreen({ mode, p1Name, p2Name, onComplete, onCancel
               )}
               {processingAI && (
                 <motion.span
-                  className="text-[8px] font-mono px-2 py-0.5 rounded"
+                  className="text-[8px] font-mono px-2 py-0.5 rounded flex items-center gap-1.5"
                   style={{ background: 'hsl(270 30% 10%)', color: 'hsl(270 40% 55%)', border: '1px solid hsl(270 30% 20%)' }}
                   animate={{ opacity: [0.4, 1, 0.4] }}
                   transition={{ duration: 2, repeat: Infinity }}
-                >THINKING</motion.span>
+                >
+                  <motion.span
+                    className="inline-block w-1 h-1 rounded-full"
+                    style={{ background: 'hsl(270 50% 55%)' }}
+                    animate={{ scale: [0.5, 1.2, 0.5] }}
+                    transition={{ duration: 1, repeat: Infinity }}
+                  />
+                  AI REASONING
+                </motion.span>
               )}
             </div>
           ) : null}
         </div>
 
-        {/* Card Pool Grid + Picks */}
-        <div className="flex-1 flex flex-col overflow-hidden px-2 gap-1.5">
+        {/* Main content: card pool + draft log */}
+        <div className="flex-1 flex overflow-hidden px-2 gap-2">
           {/* Card Pool */}
           <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
             <div className="flex gap-1.5 justify-center">
@@ -224,11 +316,12 @@ export default function DraftScreen({ mode, p1Name, p2Name, onComplete, onCancel
                 const cards = poolByTribe[tribe] || [];
                 const cfg = TRIBE_CONFIG[tribe];
                 return (
-                  <div key={tribe} className="flex flex-col gap-0.5" style={{ minWidth: tribe === 'Tribeless' ? 100 : 130, maxWidth: 160, flex: tribe === 'Tribeless' ? '0 0 100px' : '1 1 140px' }}>
+                  <div key={tribe} className="flex flex-col gap-0.5" style={{ minWidth: tribe === 'Tribeless' ? 90 : 120, maxWidth: 150, flex: tribe === 'Tribeless' ? '0 0 90px' : '1 1 130px' }}>
                     <div
-                      className="text-[7px] font-display tracking-[0.2em] text-center py-0.5 rounded-t"
+                      className="text-[7px] font-display tracking-[0.2em] text-center py-0.5 rounded-t flex items-center justify-center gap-1"
                       style={{ color: `hsl(${cfg.hue} 40% 50%)`, background: `hsl(${cfg.hue} 20% 6%)` }}
                     >
+                      <span>{cfg.icon}</span>
                       {cfg.label} ({cards.length})
                     </div>
                     <AnimatePresence>
@@ -241,12 +334,13 @@ export default function DraftScreen({ mode, p1Name, p2Name, onComplete, onCancel
                             key={card.id}
                             className="relative rounded cursor-pointer overflow-hidden"
                             style={{
-                              height: 44,
+                              height: 40,
                               border: `1px solid ${isRecent ? (step?.phase === 'ban' ? 'hsl(0 60% 50%)' : 'hsl(40 60% 50%)') : `hsl(${cfg.hue} 15% 15%)`}`,
                               background: isRecent
                                 ? (step?.phase === 'ban' ? 'hsl(0 30% 10%)' : 'hsl(40 30% 10%)')
                                 : `hsl(${cfg.hue} 8% 5%)`,
                               opacity: isPlayerTurn ? 1 : 0.65,
+                              boxShadow: isRecent ? `0 0 12px ${step?.phase === 'ban' ? 'hsl(0 50% 40% / 0.4)' : 'hsl(40 50% 40% / 0.4)'}` : 'none',
                             }}
                             onClick={() => handleCardClick(card)}
                             whileHover={isPlayerTurn ? {
@@ -295,91 +389,224 @@ export default function DraftScreen({ mode, p1Name, p2Name, onComplete, onCancel
             </div>
           </div>
 
-          {/* Bottom: Picks + Bans */}
-          <div className="shrink-0 flex items-start gap-3 pb-2 pt-1" style={{ borderTop: '1px solid hsl(0 0% 8%)' }}>
-            {/* P1 Picks */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-[8px] font-display tracking-[0.15em]" style={{ color: 'hsl(160 50% 50%)' }}>
-                  {p1Name.toUpperCase()} ({draft.p1Picks.length}/15)
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-0.5">
-                {draft.p1Picks.map(card => {
-                  const cfg = TRIBE_CONFIG[card.tribe] || TRIBE_CONFIG['Tribeless'];
-                  return (
-                    <motion.div
-                      key={card.id}
-                      className="rounded px-1 py-0.5"
-                      style={{ background: `hsl(${cfg.hue} 12% 8%)`, border: `1px solid hsl(${cfg.hue} 20% 20%)` }}
-                      initial={{ scale: 0.5, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      onHoverStart={() => setHoveredCard(card)}
-                      onHoverEnd={() => setHoveredCard(null)}
-                    >
-                      <span className="text-[7px] font-mono" style={{ color: `hsl(${cfg.hue} 25% 50%)` }}>
-                        {card.name.split(' ')[0]}
-                      </span>
-                      <span className="text-[6px] font-mono text-muted-foreground/40 ml-0.5">{card.cost}</span>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Banned */}
-            <div className="shrink-0 text-center">
-              <span className="text-[8px] font-display tracking-[0.15em]" style={{ color: 'hsl(0 35% 40%)' }}>
-                BANNED ({draft.banned.length})
+          {/* Draft Log — live narration of picks/bans */}
+          <div
+            className="shrink-0 flex flex-col overflow-hidden rounded-lg"
+            style={{
+              width: 200,
+              background: 'hsl(0 0% 3% / 0.8)',
+              border: '1px solid hsl(0 0% 10%)',
+            }}
+          >
+            <div className="shrink-0 px-2 py-1.5 flex items-center gap-1.5" style={{ borderBottom: '1px solid hsl(0 0% 8%)' }}>
+              <span className="text-[8px] font-display tracking-[0.2em]" style={{ color: 'hsl(0 0% 40%)' }}>
+                DRAFT LOG
               </span>
-              <div className="flex gap-0.5 mt-1 justify-center">
-                {draft.banned.map(card => (
+              <span className="text-[7px] font-mono text-muted-foreground/30">
+                {draftLog.length} actions
+              </span>
+            </div>
+            <div
+              ref={logScrollRef}
+              className="flex-1 overflow-y-auto px-2 py-1"
+              style={{
+                scrollbarWidth: 'none',
+                maskImage: 'linear-gradient(to bottom, black 90%, transparent 100%)',
+                WebkitMaskImage: 'linear-gradient(to bottom, black 90%, transparent 100%)',
+              }}
+            >
+              {draftLog.length === 0 && (
+                <div className="text-[7px] font-mono text-muted-foreground/20 text-center py-6">
+                  Awaiting first action...
+                </div>
+              )}
+              {draftLog.map((entry, i) => {
+                const cfg = TRIBE_CONFIG[entry.card.tribe] || TRIBE_CONFIG['Tribeless'];
+                const isBan = entry.action === 'ban';
+                const isP1 = entry.player === 'p1';
+                return (
+                  <motion.div
+                    key={i}
+                    className="py-1"
+                    style={{ borderBottom: '1px solid hsl(0 0% 6%)' }}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <div className="flex items-center gap-1 mb-0.5">
+                      <span className="text-[6px] font-mono text-muted-foreground/30">#{entry.step}</span>
+                      <span
+                        className="text-[7px] font-display tracking-wider"
+                        style={{ color: isP1 ? 'hsl(160 40% 50%)' : 'hsl(270 35% 55%)' }}
+                      >
+                        {entry.playerName}
+                      </span>
+                      <span
+                        className="text-[6px] font-mono px-1 rounded"
+                        style={{
+                          background: isBan ? 'hsl(0 30% 10%)' : 'hsl(210 30% 10%)',
+                          color: isBan ? 'hsl(0 50% 50%)' : 'hsl(210 50% 55%)',
+                        }}
+                      >
+                        {isBan ? 'BAN' : 'PICK'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div
+                        className="w-0.5 h-3 rounded-full"
+                        style={{ background: RARITY_BORDER[entry.card.rarity] }}
+                      />
+                      <span
+                        className={`text-[7px] font-display ${isBan ? 'line-through' : ''}`}
+                        style={{ color: isBan ? 'hsl(0 30% 40%)' : `hsl(${cfg.hue} 30% 55%)` }}
+                      >
+                        {entry.card.name}
+                      </span>
+                      <span className="text-[6px] font-mono text-muted-foreground/30">
+                        {entry.card.cost}⚡
+                      </span>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom: Picks + Bans */}
+        <div className="shrink-0 flex items-start gap-3 px-2 pb-2 pt-1.5" style={{ borderTop: '1px solid hsl(0 0% 8%)' }}>
+          {/* P1 Picks */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <motion.div
+                className="w-1.5 h-1.5 rounded-full"
+                style={{
+                  background: activeAI === 'p1' ? 'hsl(160 50% 50%)' : 'hsl(160 30% 25%)',
+                  boxShadow: activeAI === 'p1' ? '0 0 6px hsl(160 50% 50% / 0.5)' : 'none',
+                }}
+                animate={activeAI === 'p1' ? { scale: [1, 1.4, 1] } : {}}
+                transition={{ duration: 1, repeat: Infinity }}
+              />
+              <span className="text-[8px] font-display tracking-[0.15em]" style={{ color: 'hsl(160 50% 50%)' }}>
+                {p1Name.toUpperCase()} ({draft.p1Picks.length}/15)
+              </span>
+              <span className="text-[6px] font-mono text-muted-foreground/30">
+                avg {p1Stats.avgCost}⚡
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-0.5">
+              {draft.p1Picks.map(card => {
+                const cfg = TRIBE_CONFIG[card.tribe] || TRIBE_CONFIG['Tribeless'];
+                return (
                   <motion.div
                     key={card.id}
                     className="rounded px-1 py-0.5"
-                    style={{ background: 'hsl(0 15% 7%)', border: '1px solid hsl(0 25% 18%)' }}
+                    style={{ background: `hsl(${cfg.hue} 12% 8%)`, border: `1px solid hsl(${cfg.hue} 20% 20%)` }}
                     initial={{ scale: 0.5, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 0.5 }}
+                    animate={{ scale: 1, opacity: 1 }}
                     onHoverStart={() => setHoveredCard(card)}
                     onHoverEnd={() => setHoveredCard(null)}
                   >
-                    <span className="text-[7px] font-mono line-through" style={{ color: 'hsl(0 35% 40%)' }}>
+                    <span className="text-[7px] font-mono" style={{ color: `hsl(${cfg.hue} 25% 50%)` }}>
                       {card.name.split(' ')[0]}
                     </span>
+                    <span className="text-[6px] font-mono text-muted-foreground/40 ml-0.5">{card.cost}</span>
                   </motion.div>
-                ))}
-              </div>
+                );
+              })}
             </div>
-
-            {/* P2 Picks */}
-            <div className="flex-1 min-w-0 text-right">
-              <div className="flex items-center gap-2 mb-1 justify-end">
-                <span className="text-[8px] font-display tracking-[0.15em]" style={{ color: 'hsl(270 35% 50%)' }}>
-                  {p2Name.toUpperCase()} ({draft.p2Picks.length}/15)
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-0.5 justify-end">
-                {draft.p2Picks.map(card => {
-                  const cfg = TRIBE_CONFIG[card.tribe] || TRIBE_CONFIG['Tribeless'];
+            {/* Tribe distribution mini-bar */}
+            {draft.p1Picks.length > 0 && (
+              <div className="flex gap-1 mt-1">
+                {Object.entries(p1Stats.tribes).map(([tribe, count]) => {
+                  const cfg = TRIBE_CONFIG[tribe] || TRIBE_CONFIG['Tribeless'];
                   return (
-                    <motion.div
-                      key={card.id}
-                      className="rounded px-1 py-0.5"
-                      style={{ background: `hsl(${cfg.hue} 12% 8%)`, border: `1px solid hsl(${cfg.hue} 20% 20%)` }}
-                      initial={{ scale: 0.5, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      onHoverStart={() => setHoveredCard(card)}
-                      onHoverEnd={() => setHoveredCard(null)}
-                    >
-                      <span className="text-[7px] font-mono" style={{ color: `hsl(${cfg.hue} 25% 50%)` }}>
-                        {card.name.split(' ')[0]}
-                      </span>
-                      <span className="text-[6px] font-mono text-muted-foreground/40 ml-0.5">{card.cost}</span>
-                    </motion.div>
+                    <span key={tribe} className="text-[6px] font-mono" style={{ color: `hsl(${cfg.hue} 30% 40%)` }}>
+                      {cfg.icon}{count}
+                    </span>
                   );
                 })}
               </div>
+            )}
+          </div>
+
+          {/* Banned */}
+          <div className="shrink-0 text-center">
+            <span className="text-[8px] font-display tracking-[0.15em]" style={{ color: 'hsl(0 35% 40%)' }}>
+              BANNED ({draft.banned.length})
+            </span>
+            <div className="flex gap-0.5 mt-1 justify-center">
+              {draft.banned.map(card => (
+                <motion.div
+                  key={card.id}
+                  className="rounded px-1 py-0.5"
+                  style={{ background: 'hsl(0 15% 7%)', border: '1px solid hsl(0 25% 18%)' }}
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 0.5 }}
+                  onHoverStart={() => setHoveredCard(card)}
+                  onHoverEnd={() => setHoveredCard(null)}
+                >
+                  <span className="text-[7px] font-mono line-through" style={{ color: 'hsl(0 35% 40%)' }}>
+                    {card.name.split(' ')[0]}
+                  </span>
+                </motion.div>
+              ))}
             </div>
+          </div>
+
+          {/* P2 Picks */}
+          <div className="flex-1 min-w-0 text-right">
+            <div className="flex items-center gap-2 mb-1 justify-end">
+              <span className="text-[6px] font-mono text-muted-foreground/30">
+                avg {p2Stats.avgCost}⚡
+              </span>
+              <span className="text-[8px] font-display tracking-[0.15em]" style={{ color: 'hsl(270 35% 50%)' }}>
+                {p2Name.toUpperCase()} ({draft.p2Picks.length}/15)
+              </span>
+              <motion.div
+                className="w-1.5 h-1.5 rounded-full"
+                style={{
+                  background: activeAI === 'p2' ? 'hsl(270 40% 55%)' : 'hsl(270 20% 25%)',
+                  boxShadow: activeAI === 'p2' ? '0 0 6px hsl(270 40% 55% / 0.5)' : 'none',
+                }}
+                animate={activeAI === 'p2' ? { scale: [1, 1.4, 1] } : {}}
+                transition={{ duration: 1, repeat: Infinity }}
+              />
+            </div>
+            <div className="flex flex-wrap gap-0.5 justify-end">
+              {draft.p2Picks.map(card => {
+                const cfg = TRIBE_CONFIG[card.tribe] || TRIBE_CONFIG['Tribeless'];
+                return (
+                  <motion.div
+                    key={card.id}
+                    className="rounded px-1 py-0.5"
+                    style={{ background: `hsl(${cfg.hue} 12% 8%)`, border: `1px solid hsl(${cfg.hue} 20% 20%)` }}
+                    initial={{ scale: 0.5, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    onHoverStart={() => setHoveredCard(card)}
+                    onHoverEnd={() => setHoveredCard(null)}
+                  >
+                    <span className="text-[7px] font-mono" style={{ color: `hsl(${cfg.hue} 25% 50%)` }}>
+                      {card.name.split(' ')[0]}
+                    </span>
+                    <span className="text-[6px] font-mono text-muted-foreground/40 ml-0.5">{card.cost}</span>
+                  </motion.div>
+                );
+              })}
+            </div>
+            {/* Tribe distribution mini-bar */}
+            {draft.p2Picks.length > 0 && (
+              <div className="flex gap-1 mt-1 justify-end">
+                {Object.entries(p2Stats.tribes).map(([tribe, count]) => {
+                  const cfg = TRIBE_CONFIG[tribe] || TRIBE_CONFIG['Tribeless'];
+                  return (
+                    <span key={tribe} className="text-[6px] font-mono" style={{ color: `hsl(${cfg.hue} 30% 40%)` }}>
+                      {cfg.icon}{count}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
@@ -389,9 +616,9 @@ export default function DraftScreen({ mode, p1Name, p2Name, onComplete, onCancel
             <motion.div
               className="absolute z-50 rounded-lg overflow-hidden pointer-events-none"
               style={{
-                width: 210, left: '50%', top: '18%', transform: 'translateX(-50%)',
+                width: 220, left: '50%', top: '18%', transform: 'translateX(-50%)',
                 background: 'hsl(0 0% 4% / 0.95)', border: `1px solid ${RARITY_BORDER[hoveredCard.rarity]}`,
-                backdropFilter: 'blur(12px)', boxShadow: '0 10px 40px rgba(0,0,0,0.9)',
+                backdropFilter: 'blur(12px)', boxShadow: `0 10px 40px rgba(0,0,0,0.9), 0 0 20px ${RARITY_BORDER[hoveredCard.rarity]}33`,
               }}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -424,13 +651,13 @@ export default function DraftScreen({ mode, p1Name, p2Name, onComplete, onCancel
         </AnimatePresence>
       </div>
 
-      {/* Right Thinking Panel (P2 / AI) */}
+      {/* Right Thinking Panel (P2 / DeepSeek) */}
       <ThinkingPanel
         thinking={aiThinking2}
         playerName={p2Name}
         isActive={true}
         side="right"
-        model="draft-strategist"
+        model="DeepSeek R1 • draft-strategist"
         accentHue={270}
       />
     </div>
