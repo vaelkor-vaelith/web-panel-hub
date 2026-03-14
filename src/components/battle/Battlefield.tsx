@@ -774,6 +774,7 @@ const Battlefield = () => {
   const handleNewGame = useCallback(() => {
     aiAutoPlayRef.current = false;
     setGameMode('menu');
+    setScreenState('menu');
     setGame(null);
     setEventLog([]);
     setAiThinking('');
