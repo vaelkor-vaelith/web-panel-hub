@@ -161,9 +161,52 @@ const Battlefield = () => {
 
   // toggleMusic removed - MusicPlayer handles its own controls
 
-  // Start a new game with the given mode
+  // Start a Captain Mode draft
+  const startCaptainDraft = useCallback((mode: 'captain-pvai' | 'captain-aivai') => {
+    setGameMode(mode);
+    setScreenState('draft');
+    setShowEndLog(false);
+    setAiThinking('');
+    setAiThinking2('');
+    setEventLog([]);
+    if (mode === 'captain-aivai') {
+      setP1Name('General Aurelia');
+      setP2Name('General Sylas');
+    } else {
+      setP1Name('Player');
+      setP2Name('AI');
+    }
+  }, []);
+
+  // When draft completes, start battle with drafted decks
+  const handleDraftComplete = useCallback((p1Deck: CardData[], p2Deck: CardData[]) => {
+    setScreenState('battle');
+    setArena(pickRandomArena());
+    const g = createGame(p1Deck, p2Deck);
+    const started = startTurn(g);
+    setGame(started);
+    setAnimating(false);
+    setShowEndLog(false);
+    setAiThinking('');
+    setAiThinking2('');
+
+    if (gameMode === 'captain-aivai') {
+      gameCountRef.current += 1;
+      gameStartTimeRef.current = Date.now();
+      lastTurnActivityRef.current = Date.now();
+      setEventLog([`Captain Mode battle begins. Game #${gameCountRef.current}. Drafted armies clash.`]);
+      aiAutoPlayRef.current = true;
+      autoRestartRef.current = false;
+    } else {
+      setEventLog([`Captain Mode battle begins. Your drafted army is ready.`]);
+      autoRestartRef.current = false;
+    }
+  }, [gameMode]);
+
+  // Start a new game with the given mode (non-captain)
   const startGame = useCallback((mode: GameMode) => {
     setGameMode(mode);
+    setScreenState('battle');
     setArena(pickRandomArena());
     const deck1 = buildRandomDeck();
     const deck2 = buildRandomDeck();
