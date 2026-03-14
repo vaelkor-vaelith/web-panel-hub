@@ -269,7 +269,7 @@ const Battlefield = () => {
   const turnRunningRef = useRef(false); // Prevents concurrent runTurn executions
 
   useEffect(() => {
-    if (gameMode !== 'gpt-vs-r1' || !game || game.winner) {
+    if ((gameMode !== 'gpt-vs-r1' && gameMode !== 'captain-aivai') || !game || game.winner) {
       aiAutoPlayRef.current = false;
       return;
     }
