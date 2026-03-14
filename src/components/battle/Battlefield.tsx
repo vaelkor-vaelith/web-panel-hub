@@ -676,7 +676,7 @@ const Battlefield = () => {
 
   // Player vs AI: End Turn handler
   const handleEndTurn = useCallback(async () => {
-    if (!game || animating || game.phase !== 'playing' || gameMode !== 'pvai') return;
+    if (!game || animating || game.phase !== 'playing' || (gameMode !== 'pvai' && gameMode !== 'captain-pvai')) return;
     setAnimating(true);
     sfxEndTurn();
 
