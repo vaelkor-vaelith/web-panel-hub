@@ -1073,11 +1073,21 @@ const Battlefield = () => {
               {isAIMode && (
                 <span className="font-display text-[9px] tracking-[0.2em] px-2 py-1 rounded"
                   style={{
-                    color: 'hsl(160 50% 55%)',
-                    background: 'hsl(160 30% 8%)',
-                    border: '1px solid hsl(160 30% 20%)',
+                    color: gameMode === 'captain-aivai' ? 'hsl(40 50% 55%)' : 'hsl(160 50% 55%)',
+                    background: gameMode === 'captain-aivai' ? 'hsl(40 30% 8%)' : 'hsl(160 30% 8%)',
+                    border: `1px solid ${gameMode === 'captain-aivai' ? 'hsl(40 30% 20%)' : 'hsl(160 30% 20%)'}`,
                   }}>
-                  WAR OF MINDS
+                  {gameMode === 'captain-aivai' ? 'CAPTAIN MODE' : 'WAR OF MINDS'}
+                </span>
+              )}
+              {gameMode === 'captain-pvai' && (
+                <span className="font-display text-[9px] tracking-[0.2em] px-2 py-1 rounded"
+                  style={{
+                    color: 'hsl(40 50% 55%)',
+                    background: 'hsl(40 30% 8%)',
+                    border: '1px solid hsl(40 30% 20%)',
+                  }}>
+                  CAPTAIN MODE
                 </span>
               )}
               <button
