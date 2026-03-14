@@ -101,7 +101,8 @@ const TIMING = {
   FAST_HAND_CARD:        50,
 } as const;
 
-type GameMode = 'menu' | 'pvai' | 'gpt-vs-r1';
+type GameMode = 'menu' | 'pvai' | 'gpt-vs-r1' | 'captain-pvai' | 'captain-aivai';
+type ScreenState = 'menu' | 'draft' | 'battle';
 
 const ARENA_BACKGROUNDS = [
   { image: castleObsidianVeil, name: 'Obsidian Veil Citadel' },
