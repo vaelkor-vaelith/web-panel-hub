@@ -513,7 +513,7 @@ const Battlefield = () => {
   // Player vs AI Handlers
   // ============================================================================
   const handleSelectHand = useCallback((index: number) => {
-    if (!game || animating || game.phase !== 'playing' || gameMode !== 'pvai') return;
+    if (!game || animating || game.phase !== 'playing' || (gameMode !== 'pvai' && gameMode !== 'captain-pvai')) return;
     sfxCardSelect();
     setGame(prev => prev ? { ...prev, selectedHandIndex: prev.selectedHandIndex === index ? null : index } : prev);
   }, [game, animating, gameMode]);
