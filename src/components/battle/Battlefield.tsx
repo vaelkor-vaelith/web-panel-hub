@@ -836,6 +836,48 @@ const Battlefield = () => {
               <p className="font-body text-[10px] text-muted-foreground mt-1 tracking-normal">Challenge the realm</p>
             </motion.button>
 
+            {/* Captain Mode - Player vs AI */}
+            <motion.button
+              className="font-display text-sm px-10 py-4 rounded-lg w-72"
+              style={{
+                background: 'linear-gradient(135deg, hsl(40 40% 12%), hsl(40 30% 5%))',
+                border: '1px solid hsl(40 40% 22%)',
+                color: 'hsl(40 50% 70%)',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+              }}
+              onClick={() => startCaptainDraft('captain-pvai')}
+              whileHover={{
+                scale: 1.05,
+                borderColor: 'hsl(40 50% 38%)',
+                boxShadow: '0 0 30px hsl(40 50% 30% / 0.4)',
+              }}
+              whileTap={{ scale: 0.95 }}
+            >
+              CAPTAIN MODE
+              <p className="font-body text-[10px] text-muted-foreground mt-1 tracking-normal">Draft your army. Ban their best.</p>
+            </motion.button>
+
+            {/* Captain Mode - AI vs AI */}
+            <motion.button
+              className="font-display text-sm px-10 py-4 rounded-lg w-72"
+              style={{
+                background: 'linear-gradient(135deg, hsl(270 30% 12%), hsl(270 20% 5%))',
+                border: '1px solid hsl(270 30% 22%)',
+                color: 'hsl(270 40% 70%)',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+              }}
+              onClick={() => startCaptainDraft('captain-aivai')}
+              whileHover={{
+                scale: 1.05,
+                borderColor: 'hsl(270 40% 38%)',
+                boxShadow: '0 0 30px hsl(270 40% 30% / 0.4)',
+              }}
+              whileTap={{ scale: 0.95 }}
+            >
+              CAPTAIN MODE — WAR OF MINDS
+              <p className="font-body text-[10px] text-muted-foreground mt-1 tracking-normal">Two AIs draft and battle. Full spectacle.</p>
+            </motion.button>
+
             {/* War of Minds */}
             <motion.button
               className="font-display text-sm px-10 py-4 rounded-lg w-72"
