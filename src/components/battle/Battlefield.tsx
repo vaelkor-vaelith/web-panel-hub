@@ -935,7 +935,7 @@ const Battlefield = () => {
 
   if (!game) return null;
 
-  const isAIMode = gameMode === 'gpt-vs-r1';
+  const isAIMode = gameMode === 'gpt-vs-r1' || gameMode === 'captain-aivai';
 
   const slotW = isMobile ? 66 : 170;
   const slotH = isMobile ? 92 : 236;
