@@ -1043,7 +1043,7 @@ const Battlefield = () => {
         </div>
 
         {/* ── Left Thinking Panel (GPT) ── */}
-        {gameMode === 'gpt-vs-r1' && (
+        {isAIMode && (
           <ThinkingPanel
             thinking={aiThinking}
             playerName={aiThinkingPlayer}
