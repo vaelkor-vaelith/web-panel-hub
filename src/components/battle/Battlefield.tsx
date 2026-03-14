@@ -918,6 +918,21 @@ const Battlefield = () => {
     );
   }
 
+  // ============================================================================
+  // Draft Screen (Captain Mode)
+  // ============================================================================
+  if (screenState === 'draft') {
+    return (
+      <DraftScreen
+        mode={gameMode === 'captain-aivai' ? 'aivai' : 'pvai'}
+        p1Name={p1Name}
+        p2Name={p2Name}
+        onComplete={handleDraftComplete}
+        onCancel={handleNewGame}
+      />
+    );
+  }
+
   if (!game) return null;
 
   const isAIMode = gameMode === 'gpt-vs-r1';
