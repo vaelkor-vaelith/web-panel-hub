@@ -519,7 +519,7 @@ const Battlefield = () => {
   }, [game, animating, gameMode]);
 
   const handleSlotClick = useCallback(async (slotIndex: number) => {
-    if (!game || animating || game.phase !== 'playing' || gameMode !== 'pvai' || game.selectedHandIndex === null) return;
+    if (!game || animating || game.phase !== 'playing' || (gameMode !== 'pvai' && gameMode !== 'captain-pvai') || game.selectedHandIndex === null) return;
     if (game.player.field[slotIndex] !== null) return;
     const card = game.player.hand[game.selectedHandIndex];
     sfxCardDeploy();
