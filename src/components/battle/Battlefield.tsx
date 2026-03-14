@@ -551,7 +551,7 @@ const Battlefield = () => {
   }, [game, animating, addLog, gameMode]);
 
   const handleUseActive = useCallback((instanceId: string) => {
-    if (!game || animating || game.phase !== 'playing' || gameMode !== 'pvai') return;
+    if (!game || animating || game.phase !== 'playing' || (gameMode !== 'pvai' && gameMode !== 'captain-pvai')) return;
     sfxAbility();
     const result = useActiveAbility(game, instanceId, 'player');
     setGame(result.state);
