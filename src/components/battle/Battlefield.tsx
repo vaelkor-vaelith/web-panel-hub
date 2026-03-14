@@ -310,7 +310,7 @@ const Battlefield = () => {
       await sleep(t.readPhase);
 
       let deployResult: { state: GameState; events: CombatEvent[] };
-      if (gameMode === 'gpt-vs-r1') {
+      if (gameMode === 'gpt-vs-r1' || gameMode === 'captain-aivai') {
         // War of Minds: Player 1 = General Aurelia, Player 2 = General Sylas
         if (isPlayer) {
           setAiThinkingPlayer(playerName);
