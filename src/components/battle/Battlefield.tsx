@@ -119,6 +119,7 @@ function pickRandomArena() {
 const Battlefield = () => {
   const isMobile = useIsMobile();
   const [gameMode, setGameMode] = useState<GameMode>('menu');
+  const [screenState, setScreenState] = useState<ScreenState>('menu');
   const [game, setGame] = useState<GameState | null>(null);
   const [arena, setArena] = useState(pickRandomArena);
   const [animating, setAnimating] = useState(false);
