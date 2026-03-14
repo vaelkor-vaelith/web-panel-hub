@@ -1305,10 +1305,10 @@ const Battlefield = () => {
       {/* ── End Center Battlefield ── */}
 
         {/* ── Right Thinking Panel (War of Minds) ── */}
-        {gameMode === 'gpt-vs-r1' && (
+        {isAIMode && (
           <ThinkingPanel
-            thinking={gameMode === 'gpt-vs-r1' ? aiThinking2 : aiThinking}
-            playerName={gameMode === 'gpt-vs-r1' ? aiThinkingPlayer2 : aiThinkingPlayer}
+            thinking={aiThinking2}
+            playerName={aiThinkingPlayer2}
             isActive={true}
             side="right"
             model="war-council"
