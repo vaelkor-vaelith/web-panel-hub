@@ -31,7 +31,9 @@ import CardInfoPanel from "./CardInfoPanel";
 import AttackProjectiles from "./AttackProjectiles";
 import MythicEffects from "./MythicEffects";
 import ThinkingPanel from "./ThinkingPanel";
+import DraftScreen from "./DraftScreen";
 import type { MythicEffectType } from "./MythicEffects";
+import type { CardData } from "@/data/gameData";
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 // ============================================================================
@@ -99,7 +101,8 @@ const TIMING = {
   FAST_HAND_CARD:        50,
 } as const;
 
-type GameMode = 'menu' | 'pvai' | 'gpt-vs-r1';
+type GameMode = 'menu' | 'pvai' | 'gpt-vs-r1' | 'captain-pvai' | 'captain-aivai';
+type ScreenState = 'menu' | 'draft' | 'battle';
 
 const ARENA_BACKGROUNDS = [
   { image: castleObsidianVeil, name: 'Obsidian Veil Citadel' },
@@ -116,6 +119,7 @@ function pickRandomArena() {
 const Battlefield = () => {
   const isMobile = useIsMobile();
   const [gameMode, setGameMode] = useState<GameMode>('menu');
+  const [screenState, setScreenState] = useState<ScreenState>('menu');
   const [game, setGame] = useState<GameState | null>(null);
   const [arena, setArena] = useState(pickRandomArena);
   const [animating, setAnimating] = useState(false);
@@ -157,9 +161,52 @@ const Battlefield = () => {
 
   // toggleMusic removed - MusicPlayer handles its own controls
 
-  // Start a new game with the given mode
+  // Start a Captain Mode draft
+  const startCaptainDraft = useCallback((mode: 'captain-pvai' | 'captain-aivai') => {
+    setGameMode(mode);
+    setScreenState('draft');
+    setShowEndLog(false);
+    setAiThinking('');
+    setAiThinking2('');
+    setEventLog([]);
+    if (mode === 'captain-aivai') {
+      setP1Name('General Aurelia');
+      setP2Name('General Sylas');
+    } else {
+      setP1Name('Player');
+      setP2Name('AI');
+    }
+  }, []);
+
+  // When draft completes, start battle with drafted decks
+  const handleDraftComplete = useCallback((p1Deck: CardData[], p2Deck: CardData[]) => {
+    setScreenState('battle');
+    setArena(pickRandomArena());
+    const g = createGame(p1Deck, p2Deck);
+    const started = startTurn(g);
+    setGame(started);
+    setAnimating(false);
+    setShowEndLog(false);
+    setAiThinking('');
+    setAiThinking2('');
+
+    if (gameMode === 'captain-aivai') {
+      gameCountRef.current += 1;
+      gameStartTimeRef.current = Date.now();
+      lastTurnActivityRef.current = Date.now();
+      setEventLog([`Captain Mode battle begins. Game #${gameCountRef.current}. Drafted armies clash.`]);
+      aiAutoPlayRef.current = true;
+      autoRestartRef.current = false;
+    } else {
+      setEventLog([`Captain Mode battle begins. Your drafted army is ready.`]);
+      autoRestartRef.current = false;
+    }
+  }, [gameMode]);
+
+  // Start a new game with the given mode (non-captain)
   const startGame = useCallback((mode: GameMode) => {
     setGameMode(mode);
+    setScreenState('battle');
     setArena(pickRandomArena());
     const deck1 = buildRandomDeck();
     const deck2 = buildRandomDeck();
@@ -222,7 +269,7 @@ const Battlefield = () => {
   const turnRunningRef = useRef(false); // Prevents concurrent runTurn executions
 
   useEffect(() => {
-    if (gameMode !== 'gpt-vs-r1' || !game || game.winner) {
+    if ((gameMode !== 'gpt-vs-r1' && gameMode !== 'captain-aivai') || !game || game.winner) {
       aiAutoPlayRef.current = false;
       return;
     }
@@ -263,7 +310,7 @@ const Battlefield = () => {
       await sleep(t.readPhase);
 
       let deployResult: { state: GameState; events: CombatEvent[] };
-      if (gameMode === 'gpt-vs-r1') {
+      if (gameMode === 'gpt-vs-r1' || gameMode === 'captain-aivai') {
         // War of Minds: Player 1 = General Aurelia, Player 2 = General Sylas
         if (isPlayer) {
           setAiThinkingPlayer(playerName);
@@ -466,13 +513,13 @@ const Battlefield = () => {
   // Player vs AI Handlers
   // ============================================================================
   const handleSelectHand = useCallback((index: number) => {
-    if (!game || animating || game.phase !== 'playing' || gameMode !== 'pvai') return;
+    if (!game || animating || game.phase !== 'playing' || (gameMode !== 'pvai' && gameMode !== 'captain-pvai')) return;
     sfxCardSelect();
     setGame(prev => prev ? { ...prev, selectedHandIndex: prev.selectedHandIndex === index ? null : index } : prev);
   }, [game, animating, gameMode]);
 
   const handleSlotClick = useCallback(async (slotIndex: number) => {
-    if (!game || animating || game.phase !== 'playing' || gameMode !== 'pvai' || game.selectedHandIndex === null) return;
+    if (!game || animating || game.phase !== 'playing' || (gameMode !== 'pvai' && gameMode !== 'captain-pvai') || game.selectedHandIndex === null) return;
     if (game.player.field[slotIndex] !== null) return;
     const card = game.player.hand[game.selectedHandIndex];
     sfxCardDeploy();
@@ -504,7 +551,7 @@ const Battlefield = () => {
   }, [game, animating, addLog, gameMode]);
 
   const handleUseActive = useCallback((instanceId: string) => {
-    if (!game || animating || game.phase !== 'playing' || gameMode !== 'pvai') return;
+    if (!game || animating || game.phase !== 'playing' || (gameMode !== 'pvai' && gameMode !== 'captain-pvai')) return;
     sfxAbility();
     const result = useActiveAbility(game, instanceId, 'player');
     setGame(result.state);
@@ -629,7 +676,7 @@ const Battlefield = () => {
 
   // Player vs AI: End Turn handler
   const handleEndTurn = useCallback(async () => {
-    if (!game || animating || game.phase !== 'playing' || gameMode !== 'pvai') return;
+    if (!game || animating || game.phase !== 'playing' || (gameMode !== 'pvai' && gameMode !== 'captain-pvai')) return;
     setAnimating(true);
     sfxEndTurn();
 
@@ -727,6 +774,7 @@ const Battlefield = () => {
   const handleNewGame = useCallback(() => {
     aiAutoPlayRef.current = false;
     setGameMode('menu');
+    setScreenState('menu');
     setGame(null);
     setEventLog([]);
     setAiThinking('');
@@ -788,6 +836,48 @@ const Battlefield = () => {
               <p className="font-body text-[10px] text-muted-foreground mt-1 tracking-normal">Challenge the realm</p>
             </motion.button>
 
+            {/* Captain Mode - Player vs AI */}
+            <motion.button
+              className="font-display text-sm px-10 py-4 rounded-lg w-72"
+              style={{
+                background: 'linear-gradient(135deg, hsl(40 40% 12%), hsl(40 30% 5%))',
+                border: '1px solid hsl(40 40% 22%)',
+                color: 'hsl(40 50% 70%)',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+              }}
+              onClick={() => startCaptainDraft('captain-pvai')}
+              whileHover={{
+                scale: 1.05,
+                borderColor: 'hsl(40 50% 38%)',
+                boxShadow: '0 0 30px hsl(40 50% 30% / 0.4)',
+              }}
+              whileTap={{ scale: 0.95 }}
+            >
+              CAPTAIN MODE
+              <p className="font-body text-[10px] text-muted-foreground mt-1 tracking-normal">Draft your army. Ban their best.</p>
+            </motion.button>
+
+            {/* Captain Mode - AI vs AI */}
+            <motion.button
+              className="font-display text-sm px-10 py-4 rounded-lg w-72"
+              style={{
+                background: 'linear-gradient(135deg, hsl(270 30% 12%), hsl(270 20% 5%))',
+                border: '1px solid hsl(270 30% 22%)',
+                color: 'hsl(270 40% 70%)',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+              }}
+              onClick={() => startCaptainDraft('captain-aivai')}
+              whileHover={{
+                scale: 1.05,
+                borderColor: 'hsl(270 40% 38%)',
+                boxShadow: '0 0 30px hsl(270 40% 30% / 0.4)',
+              }}
+              whileTap={{ scale: 0.95 }}
+            >
+              CAPTAIN MODE — WAR OF MINDS
+              <p className="font-body text-[10px] text-muted-foreground mt-1 tracking-normal">Two AIs draft and battle. Full spectacle.</p>
+            </motion.button>
+
             {/* War of Minds */}
             <motion.button
               className="font-display text-sm px-10 py-4 rounded-lg w-72"
@@ -828,9 +918,24 @@ const Battlefield = () => {
     );
   }
 
+  // ============================================================================
+  // Draft Screen (Captain Mode)
+  // ============================================================================
+  if (screenState === 'draft') {
+    return (
+      <DraftScreen
+        mode={gameMode === 'captain-aivai' ? 'aivai' : 'pvai'}
+        p1Name={p1Name}
+        p2Name={p2Name}
+        onComplete={handleDraftComplete}
+        onCancel={handleNewGame}
+      />
+    );
+  }
+
   if (!game) return null;
 
-  const isAIMode = gameMode === 'gpt-vs-r1';
+  const isAIMode = gameMode === 'gpt-vs-r1' || gameMode === 'captain-aivai';
 
   const slotW = isMobile ? 66 : 170;
   const slotH = isMobile ? 92 : 236;
@@ -938,7 +1043,7 @@ const Battlefield = () => {
         </div>
 
         {/* ── Left Thinking Panel (GPT) ── */}
-        {gameMode === 'gpt-vs-r1' && (
+        {isAIMode && (
           <ThinkingPanel
             thinking={aiThinking}
             playerName={aiThinkingPlayer}
@@ -968,11 +1073,21 @@ const Battlefield = () => {
               {isAIMode && (
                 <span className="font-display text-[9px] tracking-[0.2em] px-2 py-1 rounded"
                   style={{
-                    color: 'hsl(160 50% 55%)',
-                    background: 'hsl(160 30% 8%)',
-                    border: '1px solid hsl(160 30% 20%)',
+                    color: gameMode === 'captain-aivai' ? 'hsl(40 50% 55%)' : 'hsl(160 50% 55%)',
+                    background: gameMode === 'captain-aivai' ? 'hsl(40 30% 8%)' : 'hsl(160 30% 8%)',
+                    border: `1px solid ${gameMode === 'captain-aivai' ? 'hsl(40 30% 20%)' : 'hsl(160 30% 20%)'}`,
                   }}>
-                  WAR OF MINDS
+                  {gameMode === 'captain-aivai' ? 'CAPTAIN MODE' : 'WAR OF MINDS'}
+                </span>
+              )}
+              {gameMode === 'captain-pvai' && (
+                <span className="font-display text-[9px] tracking-[0.2em] px-2 py-1 rounded"
+                  style={{
+                    color: 'hsl(40 50% 55%)',
+                    background: 'hsl(40 30% 8%)',
+                    border: '1px solid hsl(40 30% 20%)',
+                  }}>
+                  CAPTAIN MODE
                 </span>
               )}
               <button
@@ -1200,10 +1315,10 @@ const Battlefield = () => {
       {/* ── End Center Battlefield ── */}
 
         {/* ── Right Thinking Panel (War of Minds) ── */}
-        {gameMode === 'gpt-vs-r1' && (
+        {isAIMode && (
           <ThinkingPanel
-            thinking={gameMode === 'gpt-vs-r1' ? aiThinking2 : aiThinking}
-            playerName={gameMode === 'gpt-vs-r1' ? aiThinkingPlayer2 : aiThinkingPlayer}
+            thinking={aiThinking2}
+            playerName={aiThinkingPlayer2}
             isActive={true}
             side="right"
             model="war-council"
