@@ -1,14 +1,19 @@
 import { motion } from "framer-motion";
+import heroVideo from "@/assets/hero-video.mp4";
 import heroBanner from "@/assets/hero-banner.jpg";
 
 const HeroSection = () => {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Background */}
+      {/* Video Background */}
       <div className="absolute inset-0">
-        <img
-          src={heroBanner}
-          alt="The Shattered Dominion"
+        <video
+          src={heroVideo}
+          poster={heroBanner}
+          autoPlay
+          loop
+          muted
+          playsInline
           className="w-full h-full object-cover opacity-80"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-background/50 to-background" />
